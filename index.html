@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dynamic Manga Panel Creator</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #f87171; /* Red 400 - Action color */
+            --primary-dark: #ef4444; /* Red 500 */
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #030712; /* Charcoal Black */
+            color: #f3f4f6;
+        }
+        .card {
+            background-color: #1f2937; /* Dark Gray */
+            box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.7);
+            border: 2px solid #374151;
+        }
+        .btn-action {
+            background-color: var(--primary-color);
+            transition: transform 0.1s, background-color 0.2s, box-shadow 0.2s;
+            box-shadow: 0 4px 6px -1px rgba(248, 113, 113, 0.4), 0 2px 4px -2px rgba(248, 113, 113, 0.4);
+        }
+        .btn-action:hover {
+            background-color: var(--primary-dark);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 10px -3px rgba(239, 68, 68, 0.6);
+        }
+        .btn-action:active {
+            transform: translateY(0);
+            box-shadow: none;
+        }
+        .btn-random {
+            background-color: #8b5cf6; /* Violet 500 */
+            transition: transform 0.1s, background-color 0.2s;
+        }
+        .btn-random:hover {
+            background-color: #7c3aed; /* Violet 600 */
+        }
+        .spinner {
+            border-top-color: var(--primary-color);
+            border-right-color: transparent;
+            border-bottom-color: var(--primary-color);
+            border-left-color: transparent;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Manga Panel Animation Setup */
+        .panel-container {
+            overflow: hidden;
+            --animation-speed: 3.0s; 
+        }
+        @keyframes panel-zoom {
+            0% { transform: scale(1.0) translateX(0) translateY(0); }
+            50% { transform: scale(1.05) translateX(2%) translateY(-2%); }
+            100% { transform: scale(1.0) translateX(0) translateY(0); }
+        }
+        @keyframes panel-shake {
+            0%, 100% { transform: translate(0, 0); }
+            25% { transform: translate(-1px, 1px); }
+            75% { transform: translate(1px, -1px); }
+        }
+        .animated-panel img {
+            /* Use the CSS variable for dynamic speed */
+            width: 110%; 
+            height: 110%;
+            margin: -5%;
+            object-fit: cover;
+            animation: panel-zoom var(--animation-speed) ease-in-out infinite alternate;
+        }
+        .animated-panel.impact img {
+            /* Shake remains fast for impact feel */
+            animation: panel-shake 0.1s linear 3, panel-zoom var(--animation-speed) ease-in-out infinite alternate;
+        }
+    </style>
+</head>
+<body class="min-h-screen p-4 flex items-center justify-center">
+
+    <div class="w-full max-w-xl mx-auto card rounded-xl p-6 md:p-8">
+        <h1 class="text-3xl font-extrabold text-center mb-2 text-white">Manga Panel Action Generator</h1>
+        <p class="text-center text-gray-400 mb-4">Create dynamic, fight-scene manga panels and bring them to life.</p>
+        
+        <!-- Midhun T.P. Disclaimer Note -->
+        <div class="bg-yellow-900 text-yellow-200 p-3 rounded-lg text-center text-sm font-medium mb-6 border border-yellow-700">
+            ⚠️ It is a beginner model. It can make mistakes ~**Midhun T.P.**
+        </div>
+
+        <!-- Panel Display Area -->
+        <div id="panelContainer" class="panel-container relative w-full aspect-square bg-gray-800 rounded-lg shadow-inner mb-6 flex items-center justify-center border-4 border-gray-600">
+            
+            <img id="generatedImage" 
+                 src="https://placehold.co/500x500/111827/9ca3af?text=Enter+Prompt+and+Click+'Generate'" 
+                 alt="Generated Manga Panel" 
+                 class="w-full h-full object-contain transition-opacity duration-300"
+            >
+
+            <!-- Loading Spinner -->
+            <div id="loadingIndicator" class="absolute inset-0 bg-gray-900 bg-opacity-80 flex items-center justify-center hidden">
+                <div class="spinner border-4 w-12 h-12 rounded-full"></div>
+                <span class="ml-4 text-white font-medium">Drawing Panel...</span>
+            </div>
+        </div>
+
+        <!-- Custom Prompt Input -->
+        <div class="bg-gray-800 p-3 rounded-lg mb-4">
+            <label for="promptInput" class="text-sm font-semibold text-gray-400 block mb-2">Panel Action Description (Editable):</label>
+            <textarea id="promptInput" rows="3" class="w-full bg-gray-700 text-gray-200 p-2 rounded-md border border-gray-600 focus:ring-red-500 focus:border-red-500 transition-colors" placeholder="Describe your fight scene..."></textarea>
+        </div>
+
+        <!-- Animation Speed Control -->
+        <div class="bg-gray-800 p-3 rounded-lg mb-6">
+            <label for="speedSlider" class="text-sm font-semibold text-gray-400 block mb-2 flex justify-between">
+                <span>Dynamic Panel Speed (Zoom/Pan):</span>
+                <span id="speedValue" class="text-red-400 font-bold">3.0s</span>
+            </label>
+            <input type="range" id="speedSlider" min="10" max="50" value="30" class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer range-lg">
+        </div>
+
+        <!-- Generation Buttons -->
+        <div class="grid grid-cols-2 gap-3 mb-4">
+            <button id="customGenerateButton" class="btn-action text-white font-bold py-3 px-6 rounded-lg focus:outline-none focus:ring-4 focus:ring-red-500 focus:ring-opacity-50">
+                ✍️ Generate Custom Panel
+            </button>
+            <button id="randomGenerateButton" class="btn-random text-white font-bold py-3 px-6 rounded-lg focus:outline-none focus:ring-4 focus:ring-purple-500 focus:ring-opacity-50">
+                🎲 Generate Random Panel
+            </button>
+        </div>
+
+        <!-- Effect & Download Buttons -->
+        <div class="flex space-x-3">
+            <button id="animateButton" disabled class="flex-1 bg-gray-600 text-white font-bold py-3 px-6 rounded-lg shadow-md disabled:opacity-50 transition-colors focus:outline-none focus:ring-4 focus:ring-gray-500 focus:ring-opacity-50">
+                ▶️ Dynamic Panel Effect
+            </button>
+            <button id="downloadButton" disabled class="flex-1 bg-gray-600 text-white font-bold py-3 px-6 rounded-lg shadow-md disabled:opacity-50 transition-colors focus:outline-none focus:ring-4 focus:ring-gray-500 focus:ring-opacity-50">
+                ⬇️ Download Panel
+            </button>
+        </div>
+
+        <!-- Message Box -->
+        <div id="messageBox" class="mt-4 p-3 bg-red-900 text-red-200 rounded-lg hidden"></div>
+
+    </div>
+
+    <script>
+        // --- Configuration ---
+        const IMAGE_MODEL = "imagen-3.0-generate-002";
+        const API_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${IMAGE_MODEL}:predict`;
+        const apiKey = ""; 
+        
+        // --- System Prompt Base ---
+        const STYLE_INSTRUCTION = `in a highly detailed, cinematic, high-contrast, black and white manga panel. Use heavy ink shading, dynamic composition, speed lines, action lines, no speech bubbles, no screentones, ink drawing style.`;
+        const DEFAULT_PROMPT = "A muscular warrior fighting a giant robotic spider with a glowing plasma sword in a ruined city.";
+
+        const fightActions = [
+            "A superhuman punch impact, with shattered ground and dramatic motion blur",
+            "Two sword fighters clashing mid-air, surrounded by energy trails and rain",
+            "A hero executing a powerful, spinning roundhouse kick at point-blank range",
+            "A shadowy figure dodging a lightning fast attack in an extreme close up",
+            "An explosion erupting behind a determined warrior with debris flying everywhere",
+            "A martial artist charging an energy blast with visible aura and intense focus",
+            "A character jumping from a skyscraper, preparing to strike from above",
+            "A massive armored figure blocking a powerful blow, with cracks forming on the armor",
+            "A ninja performing a high-speed dash, leaving smoke trails and dynamic speed lines",
+            "A massive Kaiju grappling with a military mech in a tidal wave scene",
+            "A character deflecting dozens of magic projectiles simultaneously with a shield",
+            "A brutal takedown in a futuristic arena under bright, harsh lights"
+        ];
+        
+        function getRandomAction() {
+            return fightActions[Math.floor(Math.random() * fightActions.length)];
+        }
+
+        // --- DOM Elements ---
+        const customGenerateButton = document.getElementById('customGenerateButton');
+        const randomGenerateButton = document.getElementById('randomGenerateButton');
+        const animateButton = document.getElementById('animateButton');
+        const downloadButton = document.getElementById('downloadButton');
+        const generatedImage = document.getElementById('generatedImage');
+        const loadingIndicator = document.getElementById('loadingIndicator');
+        const promptInput = document.getElementById('promptInput');
+        const panelContainer = document.getElementById('panelContainer');
+        const messageBox = document.getElementById('messageBox');
+        const speedSlider = document.getElementById('speedSlider');
+        const speedValueDisplay = document.getElementById('speedValue');
+
+        let isAnimated = false;
+
+        // --- Utility Functions ---
+
+        function showMessage(message, isError = false) {
+            messageBox.textContent = message;
+            messageBox.className = `mt-4 p-3 rounded-lg ${isError ? 'bg-red-900 text-red-200' : 'bg-green-900 text-green-200'}`;
+            messageBox.classList.remove('hidden');
+        }
+
+        function hideMessage() {
+            messageBox.classList.add('hidden');
+        }
+
+        function updateAnimationSpeed(speedValue) {
+            // Convert slider value (10-50) to seconds (1.0s-5.0s)
+            const speedSeconds = (speedValue / 10).toFixed(1);
+            panelContainer.style.setProperty('--animation-speed', `${speedSeconds}s`);
+            speedValueDisplay.textContent = `${speedSeconds}s`;
+        }
+        
+        async function fetchWithBackoff(url, options, retries = 5, delay = 1000) {
+            for (let i = 0; i < retries; i++) {
+                try {
+                    const response = await fetch(url, options);
+                    if (response.ok) {
+                        return response;
+                    }
+                    if (response.status === 429 || response.status >= 500) {
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                        delay *= 2;
+                        continue;
+                    }
+                    throw new Error(`API Error: ${response.statusText}`);
+                } catch (error) {
+                    if (i === retries - 1) {
+                        throw error;
+                    }
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                    delay *= 2;
+                }
+            }
+        }
+
+        // --- Core Functions ---
+
+        async function generatePanel(isRandom) {
+            hideMessage();
+            // Reset animation state
+            isAnimated = false;
+            panelContainer.classList.remove('animated-panel', 'impact');
+            animateButton.textContent = '▶️ Dynamic Panel Effect';
+            
+            customGenerateButton.disabled = true;
+            randomGenerateButton.disabled = true;
+            animateButton.disabled = true;
+            downloadButton.disabled = true;
+            loadingIndicator.classList.remove('hidden');
+            generatedImage.style.opacity = '0.5';
+
+            let baseAction;
+            if (isRandom) {
+                baseAction = getRandomAction();
+                promptInput.value = baseAction; // Update input field to show the generated prompt
+            } else {
+                baseAction = promptInput.value.trim();
+                if (!baseAction) {
+                    showMessage("Please enter a description for the fight scene or click 'Generate Random Panel'.", true);
+                    customGenerateButton.disabled = false;
+                    randomGenerateButton.disabled = false;
+                    loadingIndicator.classList.add('hidden');
+                    generatedImage.style.opacity = '1';
+                    return;
+                }
+            }
+            
+            // Combine user input with the required manga style instructions
+            const userPrompt = `${baseAction} ${STYLE_INSTRUCTION}`;
+
+            const payload = {
+                instances: {
+                    prompt: userPrompt
+                },
+                parameters: {
+                    sampleCount: 1,
+                    aspectRatio: "1:1" // Standard manga panel ratio
+                }
+            };
+
+            try {
+                const response = await fetchWithBackoff(API_ENDPOINT, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const result = await response.json();
+
+                const base64Data = result?.predictions?.[0]?.bytesBase64Encoded;
+
+                if (!base64Data) {
+                    throw new Error("No image data received. The prompt might be restricted or the model failed to generate an image.");
+                }
+
+                const imageUrl = `data:image/png;base64,${base64Data}`;
+                generatedImage.src = imageUrl;
+                downloadButton.dataset.base64 = base64Data;
+                downloadButton.disabled = false;
+                animateButton.disabled = false;
+                showMessage("Manga panel drawn successfully! Click 'Dynamic Panel Effect' to bring it to life.", false);
+
+            } catch (error) {
+                console.error("Image Generation Failed:", error);
+                showMessage(`Panel generation failed: ${error.message}. Please try again.`, true);
+                generatedImage.src = "https://placehold.co/500x500/111827/9ca3af?text=Error+Generating+Image";
+                downloadButton.disabled = true;
+            } finally {
+                loadingIndicator.classList.add('hidden');
+                generatedImage.style.opacity = '1';
+                customGenerateButton.disabled = false;
+                randomGenerateButton.disabled = false;
+            }
+        }
+
+        function toggleAnimation() {
+            if (generatedImage.src.includes('placehold.co')) {
+                showMessage("Please generate a panel first!", true);
+                return;
+            }
+
+            isAnimated = !isAnimated;
+            
+            if (isAnimated) {
+                panelContainer.classList.add('animated-panel');
+                animateButton.textContent = '⏸️ Stop Dynamic Effect';
+                // Trigger a slight shake immediately for impact
+                setTimeout(() => {
+                    panelContainer.classList.add('impact');
+                    setTimeout(() => panelContainer.classList.remove('impact'), 100);
+                }, 50);
+
+            } else {
+                panelContainer.classList.remove('animated-panel');
+                animateButton.textContent = '▶️ Dynamic Panel Effect';
+            }
+            
+            panelContainer.classList.remove('impact');
+        }
+
+        function downloadImage() {
+            const base64Data = downloadButton.dataset.base64;
+            if (!base64Data) {
+                showMessage("Nothing to download. Generate a panel first!", true);
+                return;
+            }
+
+            const link = document.createElement('a');
+            link.href = `data:image/png;base64,${base64Data}`;
+            
+            const promptText = promptInput.value.trim()
+                .toLowerCase()
+                .replace(/[^a-z0-9\s]/g, '')
+                .trim()
+                .slice(0, 30)
+                .replace(/\s+/g, '_'); 
+            
+            link.download = `manga_panel_${promptText || 'action'}.png`;
+
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            showMessage("Download started!", false);
+        }
+
+        // --- Event Listeners and Initial Setup ---
+        
+        // 1. Initial Prompt Setup
+        promptInput.value = DEFAULT_PROMPT;
+
+        // 2. Initial Speed Setup
+        updateAnimationSpeed(speedSlider.value);
+        speedSlider.addEventListener('input', (e) => updateAnimationSpeed(e.target.value));
+
+        // 3. Button Listeners
+        customGenerateButton.addEventListener('click', () => generatePanel(false));
+        randomGenerateButton.addEventListener('click', () => generatePanel(true));
+        animateButton.addEventListener('click', toggleAnimation);
+        downloadButton.addEventListener('click', downloadImage);
+
+        // 4. Initial generation on load (starts with the default custom prompt)
+        window.onload = () => {
+             setTimeout(() => generatePanel(false), 100);
+        };
+    </script>
+</body>
+</html>
+
